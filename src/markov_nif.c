@@ -7,7 +7,7 @@
 #include <string.h>
 #include "erl_nif.h"
 
-#define HASHSIZE 101
+#define HASHSIZE 10000
 
 struct transition {
 	struct transition *next;
@@ -40,32 +40,26 @@ unsigned hash(char *s) {
 }
 
 struct node *find_node(char *key, process_state_t *process_state) {
-	ErlNifEnv *env = enif_alloc_env();
 	struct node *_node;
-
-			enif_send(NULL, &(process_state->_pid), env, enif_make_string(env, key, ERL_NIF_LATIN1));
-			sleep(1);
 	for (_node = process_state->table[hash(key)]; _node != NULL; _node = _node->next) {
-		//	enif_send(NULL, &(process_state->_pid), env, enif_make_string(env, "[", ERL_NIF_LATIN1));
-		//	enif_send(NULL, &(process_state->_pid), env, enif_make_string(env, key, ERL_NIF_LATIN1));
-		//	enif_send(NULL, &(process_state->_pid), env, enif_make_string(env, _node->key, ERL_NIF_LATIN1));
-		//	enif_send(NULL, &(process_state->_pid), env, enif_make_string(env, "]", ERL_NIF_LATIN1));
 		if (strcmp(key, _node->key) == 0){
-		//	enif_send(NULL, &(process_state->_pid), env, enif_make_string(env, "<<found>>", ERL_NIF_LATIN1));
-		//	sleep(1);
-		//	enif_clear_env(env);
 			return _node;
 		}
 	}
-	enif_send(NULL, &(process_state->_pid), env, enif_make_string(env, "NULL", ERL_NIF_LATIN1));
-	sleep(1);
-	enif_clear_env(env);
 	return NULL; 
 }
 
 struct transition *find_transition(char *value, struct node *_node, process_state_t *process_state) {
 	ErlNifEnv *env = enif_alloc_env();
 	struct transition *_transition;
+	char *buf = _node->_t->value;
+	if (buf == NULL)
+	enif_send(NULL, &(process_state->_pid), env, enif_make_string(env, "val null!", ERL_NIF_LATIN1));
+	else
+	enif_send(NULL, &(process_state->_pid), env, enif_make_string(env, buf, ERL_NIF_LATIN1));
+
+	enif_send(NULL, &(process_state->_pid), env, enif_make_string(env, value, ERL_NIF_LATIN1));
+	sleep(1);
 	for (_transition = _node->_t; _transition != NULL; _transition = _transition->next) {
 		if (strcmp(value, _transition->value) == 0) {
 	enif_send(NULL, &(process_state->_pid), env, enif_make_string(env, "FOUND", ERL_NIF_LATIN1));
@@ -85,17 +79,18 @@ struct node *insert(char* key, char* value, process_state_t *process_state) {
 	unsigned hashval;
 	_node = find_node(key, process_state);
 	if (_node == NULL) { 
-		enif_send(NULL, &(process_state->_pid), env, enif_make_string(env, "---- if", ERL_NIF_LATIN1));
-		sleep(1);
 		_node = (struct node *) malloc(sizeof(*_node));
 		if (_node == NULL) return NULL;
 		_node->key = strdup(key);
+		
+		//enif_send(NULL, &(process_state->_pid), env, enif_make_string(env, _node->key, ERL_NIF_LATIN1));
 		if (_node->key == NULL) return NULL;
 		hashval = hash(key);
 		_node->t_count = 1;
-		enif_send(NULL, &(process_state->_pid), env, enif_make_string(env, "start node pointing", ERL_NIF_LATIN1));
 		_node->next = process_state->table[hashval];
 		process_state->table[hashval] = _node;
+		//sleep(1);	
+		//enif_send(NULL, &(process_state->_pid), env, enif_make_string(env, process_state->table[hashval]->key, ERL_NIF_LATIN1));
 		_transition = (struct transition *) malloc(sizeof(*_transition));
 		if (_transition == NULL) return NULL;
 		_transition->value = strdup(value);
@@ -105,11 +100,10 @@ struct node *insert(char* key, char* value, process_state_t *process_state) {
 		++_node->t_count;
       	} 
       	else { 	
-		enif_send(NULL, &(process_state->_pid), env, enif_make_string(env, "---- else", ERL_NIF_LATIN1));
+		enif_send(NULL, &(process_state->_pid), env, enif_make_string(env, "----------------------------------------COLLISION", ERL_NIF_LATIN1));
 		sleep(1);
 		_transition = find_transition(value, _node, process_state);
-
-		enif_send(NULL, &(process_state->_pid), env, enif_make_string(env, "after transition find", ERL_NIF_LATIN1));
+		enif_send(NULL, &(process_state->_pid), env, enif_make_string(env, "transition search worked", ERL_NIF_LATIN1));
 		if (_transition == NULL) {
 			_transition = (struct transition *) malloc(sizeof(*_transition));
 			if (_transition == NULL) return NULL;
@@ -140,19 +134,23 @@ void build_chain(char** arr, int arr_size, int order, process_state_t *process_s
 	int i, j;
 	char* buf;
 	ErlNifEnv *env = enif_alloc_env();
-	for (i = 295; (i + order) < arr_size; ++i) {
+	/* Reorganize methods
+	 * Debug node/transition insertion and retrieval (find_transition for())
+	 * Dynamically resize hashtable
+	 * Assign transition probabilities
+	 * Build generator function
+	 * */
+	insert("joe", "first", process_state);
+	insert("joe", "second", process_state);
+	for (i = 0; (i + order) < arr_size; ++i) {
 		for (j = 1; j < order; ++j) {
 			if (j == 1) buf = merge(arr[i], arr[i + j]);
 			else buf = merge(buf, arr[i + j]);
 		}
-
-	//	enif_send(NULL, &(process_state->_pid), env, enif_make_string(env, arr[(i + order)], ERL_NIF_LATIN1));
-	//	sleep(1);
 		enif_send(NULL, &(process_state->_pid), env, enif_make_string(env, buf, ERL_NIF_LATIN1));
 		sleep(1);
-		find_node(buf, process_state);
-	//	insert(buf, arr[(i + order)], process_state);		
-	//	enif_send(NULL, &(process_state->_pid), env, enif_make_string(env, process_state->table[hash(buf)]->_t->value, ERL_NIF_LATIN1));
+		insert(buf, arr[(i + order)], process_state);		
+		enif_send(NULL, &(process_state->_pid), env, enif_make_string(env, process_state->table[hash(buf)]->_t->value, ERL_NIF_LATIN1));
 		sleep(1);
 	}
 	free(arr);
@@ -170,7 +168,7 @@ void process(char* corpus, int order, process_state_t *process_state) {
 		fragment = strtok(NULL, " ");
 	}
 	arr = realloc(arr, sizeof(char*) * (q + 1));
-	arr[q] = 0;
+	arr[q] = '\0';
 	build_chain(arr, q, order, process_state);
 }
 

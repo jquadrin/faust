@@ -1,8 +1,8 @@
-defmodule Markov.Mixfile do
+defmodule Faust.Mixfile do
   use Mix.Project
 
   def project do
-    [app: :markov,
+    [app: :faust,
      version: "0.0.1",
      elixir: "~> 1.0.0",
      deps: deps]

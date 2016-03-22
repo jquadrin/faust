@@ -4,7 +4,7 @@
 
 Markov chain text generator for Elixir.
 
-Documentation: http://hexdocs.pm/faust
+Documentation: http://hexdocs.pm/faust/0.1.0
 
 ## Example
 ```iex
